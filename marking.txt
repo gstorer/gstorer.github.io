@@ -2,9 +2,10 @@
 // @name        Marking Aid
 // @namespace   Violentmonkey Scripts
 // @match       https://www.passess.com.au/mainsite/scoringupgrade.php
+// @match       https://www.passess.com.au/mainsite/scoringupgrade.php#
 // @match       file:///*
 // @grant       none
-// @version     1.2
+// @version     1.3
 // @downloadURL https://gstorer.github.io/marking.txt
 // @updateURL   https://gstorer.github.io/marking.txt
 // @author      -
