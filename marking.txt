@@ -4,10 +4,11 @@
 // @match       https://www.passess.com.au/mainsite/scoringupgrade.php
 // @match       file:///*
 // @grant       none
-// @version     1.1
+// @version     1.2
 // @downloadURL https://gstorer.github.io/marking.txt
 // @updateURL   https://gstorer.github.io/marking.txt
 // @author      -
+// @run-at      document-idle
 // @description 27/05/2022, 23:49:40
 // @require     https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/2.1.5/tesseract.min.js
 // @require     https://cdn.jsdelivr.net/npm/typo-js@1.2.1/typo.min.js
@@ -36,8 +37,23 @@ function progressUpdate(packet){
   log.text(packet.status + ':' + (packet.progress* 100).toFixed(0) + '%');
 };
 
-$(window).load((async function() {
+const waitFor = (...selectors) => new Promise(resolve => {
+    const delay = 500
+    const f = () => {
+        const elements = selectors.map(selector => document.querySelector(selector))
+        if (elements.every(element => element != null)) {
+            resolve(elements)
+        } else {
+            setTimeout(f, delay)
+        }
+    }
+    f()
+})
+
+$(window).load((async function() {  
   'use strict';
+  
+  await waitFor('#imagecanvas1');
   
   const model = await tf.loadLayersModel('https://gstorer.github.io/model.json');
   
