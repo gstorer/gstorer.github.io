@@ -1,0 +1,162 @@
+// ==UserScript==
+// @name        Marking Aid
+// @namespace   Violentmonkey Scripts
+// @match       https://www.passess.com.au/mainsite/scoringupgrade.php
+// @match       file:///*
+// @grant       none
+// @version     1.0
+// @author      -
+// @description 27/05/2022, 23:49:40
+// @require     https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/2.1.5/tesseract.min.js
+// @require     https://cdn.jsdelivr.net/npm/typo-js@1.2.1/typo.min.js
+// @require     https://cdnjs.cloudflare.com/ajax/libs/tensorflow/3.18.0/tf.min.js
+// ==/UserScript==
+
+var maxchar = 'z'.charCodeAt(0) - 'a'.charCodeAt(0) + 3
+function vectorise_word(word, padding=15){
+    let vector = Array(padding).fill(0);
+
+    for (let i = 0; i < word.length; i++) {
+      vector[i] = word.charCodeAt(i) - 'a'.charCodeAt(0) + 1;
+      if (word[i] == "'") {
+        vector[i] = maxchar - 1;
+      }
+      if (vector[i] < 0 || vector[i] > maxchar) {
+        vector[i] = maxchar; // catch all for weird characters
+      }
+    }
+  
+    return tf.tensor(vector, [1,padding,1]);
+};
+
+function progressUpdate(packet){
+  var log = $("#log").first();
+  log.text(packet.status + ':' + (packet.progress* 100).toFixed(0) + '%');
+};
+
+(async function() {
+  'use strict';
+  
+  const model = await tf.loadLayersModel('https://gstorer.github.io/model.json');
+  
+  //var vectorise = vectorise_word('build');
+  //vectorise.print();
+  //var word = tf.tensor([ 2., 21.,  9., 12.,  4.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0., 0.,  0.], [1,15,1]);
+  //word.print();
+  
+  //let predict = model.predict(word);
+  //predict.print();
+  //tf.argMax(predict,1).print();
+  //let jsvar = tf.argMax(predict).arraySync();
+  
+  var dictionary;
+
+  $.get( 'https://spellcheck-dictionaries.github.io/en_AU/en_AU.aff', function ( affData ) {
+    $.get( 'https://spellcheck-dictionaries.github.io/en_AU/en_AU.dic', function ( wordsData ) {
+      dictionary = new Typo( "en_AU", affData, wordsData );
+    });
+  });
+   
+  const simple={a:1,add:1,ago:1,all:1,am:1,an:1,and:1,are:1,as:1,at:1,ate:1,away:1,bad:1,bark:1,bee:1,bell:1,best:1,big:1,bin:1,bird:1,blow:1,book:1,box:1,bring:1,but:1,by:1,can:1,car:1,cheek:1,clap:1,cow:1,crab:1,crash:1,cry:1,cup:1,day:1,deep:1,did:1,dog:1,doll:1,dot:1,drag:1,dress:1,drip:1,drop:1,drum:1,eat:1,egg:1,end:1,even:1,ever:1,fat:1,feel:1,feet:1,fell:1,fill:1,fit:1,five:1,food:1,for:1,four:1,from:1,fun:1,get:1,go:1,going:1,good:1,got:1,grass:1,hand:1,hard:1,has:1,hat:1,have:1,he:1,help:1,her:1,him:1,home:1,hot:1,how:1,I:1,if:1,in:1,into:1,is:1,it:1,just:1,keep:1,kid:1,land:1,lay:1,leaf:1,left:1,leg:1,lets:1,lick:1,like:1,liked:1,long:1,look:1,lot:1,may:1,me:1,meet:1,men:1,milk:1,much:1,my:1,name:1,new:1,no:1,not:1,nut:1,of:1,off:1,old:1,one:1,our:1,out:1,park:1,pay:1,pen:1,play:1,plot:1,pull:1,put:1,ran:1,red:1,rest:1,roof:1,room:1,rot:1,run:1,sad:1,saw:1,say:1,see:1,seed:1,seem:1,set:1,she:1,shed:1,shop:1,shut:1,sing:1,sit:1,six:1,slow:1,so:1,spot:1,stand:1,sleep:1,teeth:1,"tell/s":1,ten:1,that:1,the:1,then:1,thing:1,this:1,to:1,today:1,top:1,undo:1,up:1,vat:1,vet:1,was:1,we:1,well:1,went:1,will:1,wish:1,with:1,yell:1,yes:1,you:1,zoo:1};
+  const common={able:2,aboard:2,about:2,above:2,actions:2,actor:2,adventure:2,after:2,again:2,against:2,air:2,almost:2,along:2,also:2,although:2,always:2,animal:2,another:2,any:2,anybody:2,anyone:2,anywhere:2,appear:2,"aren't":2,around:2,arrive:2,asleep:2,attach:2,baby:2,backyard:2,bare:2,beach:2,beaks:2,because:2,before:2,behave:2,behind:2,being:2,belly:2,below:2,between:2,bigger:2,bike:2,birthday:2,bleed:2,blend:2,blind:2,block:2,bodies:2,bottom:2,bought:2,cake:2,carries:2,catch:2,chain:2,chalk:2,change:2,chase:2,chest:2,child:2,city:2,class:2,claw:2,clean:2,climb:2,clock:2,close:2,"colour/color":2,contain:2,cough:2,could:2,couple:2,cracked:2,crime:2,crowd:2,dark:2,dead:2,destroy:2,detail:2,"didn’t":2,different:2,disarm:2,discuss:2,distance:2,does:2,"doesn’t":2,"don’t":2,door:2,downstairs:2,dragon:2,draw:2,dream:2,dry:2,during:2,earth:2,enemy:2,enjoy:2,enough:2,every:2,everybody:2,everyone:2,everywhere:2,evil:2,example:2,explain:2,eyes:2,face:2,fair:2,family:2,fear:2,feather:2,feelings:2,fighting:2,finally:2,fine:2,first:2,flapping:2,flies:2,flight:2,floor:2,flower:2,fly:2,followed:2,footsteps:2,forest:2,found:2,friend:2,fright:2,fruit:2,funny:2,game:2,garden:2,gardening:2,getting:2,goes:2,going:2,golden:2,goodness:2,globe:2,great:2,green:2,ground:2,group:2,habit:2,hair:2,happen:2,happiest:2,happy:2,hardly:2,hatch:2,heaps:2,"hear/here":2,heard:2,hearing:2,heavier:2,holidays:2,home:2,hope:2,hoping:2,hospital:2,house:2,however:2,huge:2,humans:2,hundred:2,hunted:2,ice:2,idea:2,important:2,insects:2,inside:2,invite:2,islands:2,jacket:2,joke:2,juice:2,jump:2,key:2,kitten:2,knee:2,knows:2,ladies:2,lake:2,large:2,laugh:2,laying:2,leaf:2,learn:2,leaves:2,leaving:2,length:2,lesson:2,letter:2,lifelike:2,light:2,limb:2,little:2,live:2,living:2,local:2,loose:2,lose:2,loud:2,love:2,magazine:2,mainly:2,many:2,mascot:2,match:2,meat:2,medals:2,medium:2,menu:2,merit:2,messy:2,metals:2,might:2,migrate:2,modern:2,Monday:2,moonlight:2,moral:2,more:2,mother:2,move:2,movie:2,muffled:2,music:2,native:2,naughty:2,nearest:2,necklace:2,nectar:2,nephew:2,nice:2,night:2,noise:2,noisy:2,numb:2,obtain:2,ocean:2,octopus:2,older:2,once:2,onion:2,ordinary:2,other:2,outback:2,outdoors:2,outside:2,over:2,own:2,pair:2,patter:2,paw:2,people:2,perfect:2,phone:2,picture:2,place:2,planet:2,plastic:2,platform:2,police:2,poor:2,potatoes:2,power:2,pretty:2,probably:2,problem:2,purpose:2,quality:2,queen:2,question:2,quick:2,quickly:2,quiet:2,quite:2,rain:2,rainbow:2,rainforest:2,readers:2,realise:2,really:2,recover:2,region:2,remember:2,report:2,reptile:2,rescued:2,results:2,return:2,revenge:2,riot:2,ripple:2,roar:2,robot:2,rodent:2,rude:2,running:2,safety:2,said:2,saving:2,says:2,scare:2,scatter:2,school:2,science:2,scorch:2,scrape:2,scream:2,second:2,secret:2,several:2,shaking:2,shape:2,sharp:2,shiny:2,shock:2,should:2,shout:2,show:2,sign:2,sitting:2,sixth:2,size:2,sky:2,small:2,someone:2,sorts:2,sound:2,speak:2,speech:2,sprawl:2,station:2,stay:2,steal:2,stepped:2,stopped:2,strange:2,strip:2,strong:2,structure:2,strung:2,such:2,suddenly:2,surprise:2,swimming:2,table:2,tail:2,tall:2,teacher:2,team:2,"their/there":2,they:2,"they're":2,though:2,thought:2,title:2,together:2,tomorrow:2,"too/two":2,touched:2,tower:2,train:2,travel:2,treat:2,trick:2,tries:2,trouble:2,ugly:2,uncle:2,underneath:2,understand:2,use:2,used:2,useful:2,using:2,usually:2,vanish:2,very:2,view:2,vomit:2,wait:2,walks:2,wall:2,want:2,war:2,warn:2,watch:2,water:2,wear:2,webbed:2,welcome:2,were:2,what:2,when:2,where:2,which:2,white:2,who:2,whole:2,whose:2,window:2,wings:2,winning:2,witch:2,without:2,wizard:2,woke:2,woman:2,wonder:2,world:2,worried:2,would:2,"wouldn’t":2,write:2,writing:2,"x-ray":2,yelled:2,yellow:2,yoke:2,your:2,yourself:2,zapped:2};
+  const difficult={abandoned:3,absolutely:3,access:3,acknowledge:3,actually:3,adjusted:3,advantage:3,affect:3,agencies:3,agreeable:3,alien:3,allergic:3,amuse:3,annual:3,answer:3,area:3,assess:3,attachment:3,attempt:3,attention:3,attractive:3,auction:3,author:3,autograph:3,awesome:3,barely:3,beautiful:3,behaviours:3,benefit:3,beware:3,bough:3,boulder:3,boundary:3,"brake/break":3,breathless:3,brethren:3,brief:3,burglar:3,business:3,calm:3,carriage:3,category:3,celebration:3,certain:3,character:3,cheques:3,chocolate:3,circuit:3,college:3,community:3,competition:3,complaining:3,complete:3,concerned:3,confidence:3,consider:3,considerate:3,continued:3,contraptions:3,convince:3,coordinator:3,corpses:3,creature:3,crevice:3,criminal:3,crystal:3,curious:3,damage:3,dangerous:3,decided:3,decision:3,decorate:3,defence:3,delicious:3,demolished:3,demonstrate:3,depot:3,depression:3,deprived:3,deserts:3,dessert:3,designed:3,detective:3,digest:3,disappear:3,disappointed:3,discover:3,drawer:3,drought:3,dye:3,easiest:3,edible:3,educational:3,eerie:3,effect:3,effective:3,emerged:3,endangered:3,energy:3,engage:3,engine:3,enjoyable:3,enormous:3,ensure:3,episode:3,especially:3,esteem:3,except:3,exciting:3,exert:3,expensive:3,experience:3,explosion:3,extremely:3,famous:3,favourite:3,features:3,February:3,fellowship:3,fete:3,fibre:3,fiction:3,field:3,fierce:3,formal:3,formation:3,fractures:3,fragile:3,frenzied:3,frightened:3,furniture:3,further:3,galaxy:3,generation:3,gesture:3,gigantic:3,glacier:3,global:3,gnawed:3,goblet:3,government:3,graphics:3,grumble:3,guess:3,hammock:3,haphazard:3,haste:3,haul:3,healthy:3,heir:3,herd:3,hesitated:3,hilarious:3,history:3,hoarse:3,honest:3,horrified:3,hostel:3,humorous:3,hurriedly:3,hygiene:3,illegal:3,imagination:3,imaginative:3,implicate:3,improvement:3,including:3,inexpert:3,information:3,informative:3,insane:3,insolent:3,insurance:3,intelligent:3,intention:3,"interest/ing":3,interrupt:3,invisible:3,irrational:3,issue:3,jeopardy:3,jettison:3,journey:3,kidnapped:3,kiosk:3,knowledge:3,language:3,league:3,library:3,lightning:3,litany:3,literacy:3,lullaby:3,lunar:3,lyrebird:3,majestic:3,malt:3,martial:3,matted:3,mayor:3,measured:3,medicine:3,medieval:3,minerals:3,molecule:3,molten:3,moult:3,mucus:3,muscle:3,muscular:3,museum:3,mysterious:3,mystery:3,mystic:3,myth:3,natural:3,negligent:3,neighbour:3,niece:3,normality:3,nutrition:3,notice:3,oblige:3,observe:3,obviously:3,occur:3,ogre:3,omit:3,opportunity:3,opposition:3,optical:3,optimist:3,option:3,organise:3,origami:3,oxygen:3,parallel:3,pedestal:3,personalities:3,pincer:3,plait:3,pleasure:3,prankster:3,pray:3,precious:3,predators:3,presence:3,prey:3,principal:3,principle:3,professor:3,pumpkin:3,punctual:3,pure:3,pursuit:3,quaint:3,quay:3,quench:3,query:3,queue:3,radial:3,ravine:3,razor:3,realistic:3,receive:3,recent:3,recognise:3,recommend:3,rectangular:3,relationships:3,relevant:3,reliving:3,reluctant:3,remnant:3,remorse:3,replenish:3,require:3,resources:3,responsible:3,rhyme:3,ridiculous:3,rogue:3,saxophone:3,scavenger:3,scene:3,sceptical:3,schnitzel:3,scientific:3,seize:3,sewage:3,sewerage:3,shoulder:3,shrieked:3,signal:3,skeleton:3,slaughter:3,society:3,sought:3,spectacular:3,stammered:3,stomach:3,submarine:3,subsided:3,success:3,suitable:3,summoned:3,supervision:3,surrounded:3,survive:3,system:3,taffeta:3,talons:3,tarantula:3,taught:3,technique:3,temperature:3,tension:3,tentacles:3,terrace:3,terrible:3,terribly:3,territory:3,thermonuclear:3,travelled:3,treasure:3,uncomfortable:3,unexpectedly:3,unfortunately:3,unique:3,unnatural:3,upholsterer:3,urban:3,urgency:3,useless:3,valuable:3,vegetation:3,verdant:3,vessel:3,victory:3,villages:3,violence:3,vision:3,voyage:3,vultures:3,wary:3,weary:3,wearisome:3,weighed:3,weight:3,weird:3,wholly:3,witchery:3,women:3,wonderful:3,wrapped:3,wrinkle:3,written:3,yacht:3,yearn:3,yield:3,youngster:3,youthful:3,zany:3,zenith:3,zodiac:3,zoology:3};
+  const challenging={accelerating:4,accidentally:4,accommodation:4,accumulate:4,acquainted:4,acquire:4,adrenaline:4,aisle:4,annihilate:4,annoyance:4,appearance:4,appreciated:4,appropriate:4,archaeology:4,awkwardly:4,baulk:4,beige:4,belligerence:4,benefited:4,benevolent:4,"blasé":4,brevity:4,brilliance:4,brusque:4,buoy:4,camouflage:4,carcasses:4,changeable:4,climatic:4,colloquial:4,colossal:4,column:4,competence:4,complementary:4,complimentary:4,conscience:4,conscious:4,consequently:4,correspond:4,courageous:4,cylinder:4,debris:4,decomposed:4,deficient:4,definitely:4,delicious:4,dependency:4,desiccate:4,desperate:4,desperation:4,dominant:4,draught:4,dungeon:4,effervescent:4,efficient:4,embarrassed:4,environment:4,esteem:4,euphoric:4,exaggerate:4,exhilarating:4,explanatory:4,facilities:4,fascinating:4,fluorescent:4,fuchsia:4,furnace:4,futile:4,gauge:4,ghoul:4,grandeur:4,guaranteed:4,guillotine:4,gynaecology:4,haemoglobin:4,hallucinate:4,helium:4,hesitance:4,humanitarian:4,imaginable:4,incandescent:4,incompetent:4,inconsequential:4,inconsolable:4,incorporate:4,indecipherable:4,insanity:4,interrogate:4,intrigue:4,intriguing:4,iridescent:4,irrelevant:4,irresponsible:4,judicial:4,kaleidoscope:4,kayaking:4,lacerate:4,leisure:4,lieutenant:4,liquefy:4,litigious:4,longevity:4,luminescent:4,magnificent:4,malaria:4,mandible:4,manoeuvre:4,mathematician:4,mediaeval:4,miniature:4,minions:4,mischievous:4,misconstrue:4,misogyny:4,naivety:4,narcissist:4,necessary:4,nonchalant:4,noticeable:4,notoriety:4,nuisance:4,obedience:4,obnoxious:4,obscure:4,observation:4,obsessed:4,obsessive:4,occasionally:4,occasions:4,occurrence:4,opaque:4,oscillate:4,peculiar:4,personally:4,persuade:4,persuasive:4,pessimistic:4,phosphorescent:4,physically:4,plateau:4,population:4,precise:4,prevalence:4,privileged:4,proposition:4,psychiatrist:4,psychic:4,psychology:4,purest:4,purist:4,quiescent:4,racquet:4,rancour:4,realistically:4,recognisable:4,redemption:4,reign:4,rein:4,reminiscent:4,responsibility:4,resurrect:4,resuscitate:4,rhythm:4,ricochet:4,rigorous:4,sabotage:4,scimitar:4,scintillate:4,separate:4,silhouette:4,skulduggery:4,sovereign:4,stationary:4,stationery:4,sufficient:4,telekinesis:4,temperamental:4,temporary:4,therapeutic:4,thoroughly:4,tournament:4,tsunami:4,ubiquitous:4,unconscious:4,unnecessary:4,vertebrates:4,vicious:4,voila:4,vulnerable:4,waive:4,wilful:4,wondrous:4,wraith:4,wrought:4,zephyr:4};
+  
+  let word_list = {...simple, ...common, ...difficult, ...challenging};
+
+  var input_img = $("#imagecanvas1")[0];
+  var input_overlay = $("<canvas id='input-overlay' style='position: absolute;''></canvas>")[0];
+  input_img.before(input_overlay);
+  input_overlay.width = input_img.naturalWidth;
+	input_overlay.height = input_img.naturalHeight;
+  var ioctx = input_overlay.getContext('2d');
+  
+  var log = $("<div id='log'></div>");
+  $(input_img).parent().before(log);
+  var button = $("<button id='hide_show' type='button'>Hide</button>");
+  $(input_img).parent().before(button);
+  button.click( function() {
+    if ($(this).text()=='Hide') {
+      $(input_overlay).hide();
+      $(this).text('Show');
+    } else {
+      $(input_overlay).show();
+      $(this).text('Hide');
+    }
+  });
+
+  const { data } = await Tesseract.recognize(input_img, 'eng', { logger: progressUpdate });
+  
+  var simple_count = 0;
+  var common_count = 0;
+  var difficult_count = 0;
+  var challenging_count = 0;
+  var unknown_list = []
+  var misspelled_list = []
+  
+  data.lines.slice(1).forEach(function(line) {
+    line.words.forEach(function(w){
+      let cleaned_word = w.text.toLowerCase().replace(/[^\w\s\']/g, "");
+      let diff_score = word_list[cleaned_word];
+      
+      var number_re = /^(?:\d{1,3}(?:,\d{3})*|\d+)(?:\.\d+)?$/;
+      var check_word = w.text.replace(/[^\w\s\']/g, "");
+      var correct = dictionary.check( check_word );
+      var is_number = number_re.test( check_word );
+      
+      var stroke_style = null;
+      
+      if (diff_score == undefined && correct && !is_number) {
+        let predict = model.predict(vectorise_word(cleaned_word));
+        vectorise_word(cleaned_word).print();
+        predict.print();
+        diff_score = tf.argMax(predict,1).arraySync()[0] + 1;
+      }
+
+      switch(diff_score) {
+        case 1:
+          simple_count += 1;
+          stroke_style = 'green';
+          break;
+        case 2:
+          common_count += 1;
+          stroke_style = 'blue';
+          break;
+        case 3:
+          difficult_count += 1;
+          stroke_style = 'yellow';
+          break;
+        case 4:
+          challenging_count += 1;
+          stroke_style = 'purple';
+          break;
+        case undefined:
+          unknown_list.push(w.text);
+          break;
+      }
+
+      if (!correct && !is_number) {
+        misspelled_list.push(w.text);
+        stroke_style = 'red';
+      }
+
+      if (stroke_style) {
+        var b = w.bbox;
+
+        ioctx.strokeWidth = 2;
+
+        ioctx.beginPath();
+        ioctx.moveTo(w.baseline.x0, w.baseline.y0);
+        ioctx.lineTo(w.baseline.x1, w.baseline.y1);
+        ioctx.strokeStyle = stroke_style;
+        ioctx.stroke();
+      }
+    })
+  });
+  
+  $("#log").first().text('Simple:' + simple_count + ' Common:' + common_count + ' Difficult:' + difficult_count + ' Challenging:' + challenging_count + ' Misspelled:' + misspelled_list.length);
+  
+  console.log(data);
+
+  //alert('Hello World!');
+})();
