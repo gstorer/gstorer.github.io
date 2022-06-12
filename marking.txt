@@ -4,7 +4,9 @@
 // @match       https://www.passess.com.au/mainsite/scoringupgrade.php
 // @match       file:///*
 // @grant       none
-// @version     1.0
+// @version     1.1
+// @downloadURL https://gstorer.github.io/marking.txt
+// @updateURL   https://gstorer.github.io/marking.txt
 // @author      -
 // @description 27/05/2022, 23:49:40
 // @require     https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/2.1.5/tesseract.min.js
@@ -34,7 +36,7 @@ function progressUpdate(packet){
   log.text(packet.status + ':' + (packet.progress* 100).toFixed(0) + '%');
 };
 
-(async function() {
+$(window).load((async function() {
   'use strict';
   
   const model = await tf.loadLayersModel('https://gstorer.github.io/model.json');
@@ -159,4 +161,4 @@ function progressUpdate(packet){
   console.log(data);
 
   //alert('Hello World!');
-})();
+})());
